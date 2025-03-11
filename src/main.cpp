@@ -1,41 +1,52 @@
 #include <Arduino.h>
 #include "init.h"
-#include "func.h"
 
+int i = 0;
+bool loggerRunning = false;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+int lastButtonState = LOW;
+int buttonState = LOW;
 void calibrateSensor()
 {
   myAltitudeSensor.AutoOffset();
-  myIMUSensor.SetOffsetAcc(0.0, 0.0, 9.81);
+  myIMUSensor.AutoOffsetGyro();
   myPitotSensor.AutoOffset();
   myAOASensor.AutoOffset();
 }
 
-void sensorCheck()
+void handleButtonPress()
 {
-  if (!myAltitudeSensor.Init(Wire))
+  int reading = digitalRead(PINSWITCH);
+
+  if (reading != lastButtonState)
   {
-    Serial.println("BMP280 not found!");
+    lastDebounceTime = millis();
   }
-  if (!myIMUSensor.Init(Wire))
+
+  if ((millis() - lastDebounceTime) > debounceDelay)
   {
-    Serial.println("MPU9250 not found!");
+    if (reading != buttonState)
+    {
+      buttonState = reading;
+      if (buttonState == HIGH)
+      {
+        loggerRunning = !loggerRunning;
+        if (loggerRunning)
+        {
+          Serial.println("Logger started");
+          myLogger.StartLogger();
+        }
+        else
+        {
+          Serial.println("Logger stopped");
+          myLogger.StopLogger();
+        }
+      }
+    }
   }
-  if (!myPitotSensor.Init(Wire))
-  {
-    Serial.println("Pitot not found!");
-  }
-  if (!myGPSSensor.Init(LAT0, LON0))
-  {
-    Serial.println("GPS not found!");
-  }
-  if (!myAOASensor.Init(offsetAngle))
-  {
-    Serial.println("AOA not found!");
-  }
-  if (!myLogger.CheckSD())
-  {
-    Serial.println("SD not found!");
-  }
+
+  lastButtonState = reading;
 }
 
 void sensorAdd()
@@ -50,20 +61,24 @@ void sensorAdd()
 void setup()
 {
   Serial.begin(9600);
-  Wire.begin(I2C_SDA, I2C_SCL);
-  Wire.setClock(400000);
-  sensorCheck();
+  pinMode(PINSWITCH, INPUT);
+
+  setupSensors();
   sensorAdd();
   calibrateSensor();
-  Serial.println(myLogger.GetLoggerFileName());
+  myLoggerTimer.Start();
 }
 
 void loop()
 {
-  myLogger.StartLogger();
+  handleButtonPress();
+  Serial.println(myAOASensor.GetAngle());
+  if (loggerRunning)
+  {
+    String myString = myLogger.UpdateSensors();
+    myLogger.WriteLogger();
+  }
 
-  String myString = myLogger.UpdateSensors();
-  Serial.println(myString);
-  myLogger.WriteLogger();
-  // put your main code here, to run repeatedly:
+  delay(100);
+  //  put your main code here, to run repeatedly:
 }
