@@ -8,6 +8,7 @@
 #include <FRAS5600.h>
 #include <FRTinyGPS.h>
 #include <FRMS4525DO.h>
+#include <FRPPMReceiver.h>
 
 const int PINSWITCH = 35; // The pin number for the button to start and stop logging
 
@@ -18,6 +19,7 @@ const float offsetAngle = 0;
 
 const int LOGGERLOOPTIMEMS = 100; // Loop time for logging
 
+FRPPMReceiver myReceiver;
 Timer myLoggerTimer(LOGGERLOOPTIMEMS);
 Logger myLogger;
 FRMPU9250 myIMUSensor;
@@ -59,6 +61,65 @@ void setupSensors()
         Serial.println("Failed to initialize Pitot sensor");
     }
     Serial.println("Sensors Initialised");
+}
+
+void setupLogger()
+{
+    setupSensors();
+    calibrateSensor();
+    sensorAdd();
+    myLoggerTimer.Start();
+}
+
+void calibrateSensor()
+{
+    myAltitudeSensor.AutoOffset();
+    myIMUSensor.AutoOffsetGyro();
+    myPitotSensor.AutoOffset();
+    myAOASensor.AutoOffset();
+}
+
+void handleButtonPress()
+{
+    int reading = digitalRead(PINSWITCH);
+
+    if (reading != lastButtonState)
+    {
+        lastDebounceTime = millis();
+    }
+
+    if ((millis() - lastDebounceTime) > debounceDelay)
+    {
+        if (reading != buttonState)
+        {
+            buttonState = reading;
+            if (buttonState == HIGH)
+            {
+                loggerRunning = !loggerRunning;
+                if (loggerRunning)
+                {
+                    Serial.println("Logger started");
+                    myLogger.StartLogger();
+                }
+                else
+                {
+                    Serial.println("Logger stopped");
+                    myLogger.StopLogger();
+                }
+            }
+        }
+    }
+
+    lastButtonState = reading;
+}
+
+void sensorAdd()
+{
+    myLogger.AddSensor(&myAltitudeSensor);
+    myLogger.AddSensor(&myIMUSensor);
+    myLogger.AddSensor(&myPitotSensor);
+    myLogger.AddSensor(&myGPSSensor);
+    myLogger.AddSensor(&myAOASensor);
 }
 
 #endif
