@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#ifndef LOGGER_H
+#define LOGGER_H
 
 #include <FRTimer.h>
 #include <FRLogger.h>
@@ -13,7 +13,6 @@
 
 const byte number_chan = 8;
 const byte ppm_pin = 4;
-int chanval[number_chan];
 const int loggerPin = 5; // The pin number for the button to start and stop logging
 
 const float LAT0 = 51.99751239776191; // Latitude of null reference location, in this case the Terminal
