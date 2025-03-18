@@ -6,17 +6,17 @@
 #include <ESP32Servo.h>
 #include "smoothservo.h"
 
-const byte NUMBEROFSERVOS = 2; // Number of Servos to control. Change if you wannt more servos
+const byte NumServo = 2; // Number of Servos to control. Change if you wannt more servos
 
 // Pins
-const byte PINSERVO[NUMBEROFSERVOS] = {26, 27}; // Servo pin numbers
+const byte ServoPin[NumServo] = {26, 27}; // Servo pin numbers
 
 // other constants
-const int LOOPTIMESERVOMS = 100; // Loop time for controlling servos. Make it 10 ms for smoother control, but then remove the Serial.print statements to prevent overruns
+const int NLGServoTime = 100; // Loop time for controlling servos. Make it 10 ms for smoother control, but then remove the Serial.print statements to prevent overruns
 
 // Create all objects
-Timer myServoTimer(LOOPTIMESERVOMS); // Timer object for the clock
-SmoothServo myServo[NUMBEROFSERVOS];
+Timer myNLGTimer(NLGServoTime); // Timer object for the clock
+SmoothServo myNLGServo[NumServo];
 extern FRPPMReceiver myPPMReceiver;
 
 const byte LANDINGGEARCHANNEL = 5;
@@ -30,9 +30,9 @@ triStateSwitch landingGearSwitchStatePrev;
 const byte SERVOLANDINGGEAR = 0; // the servo number of the landing gear
 const byte SERVOLANDINGHATCH = 1;
 
-const int MAXSERVOSPEEDDEGS[NUMBEROFSERVOS] = {30, 60}; // Maximum speed of the servos in degrees per sec
-const byte SERVOSTARTPOS[NUMBEROFSERVOS] = {130, 27};   // The starting position of the servos, type in your values here
-const byte SERVOENDPOS[NUMBEROFSERVOS] = {13, 176};     // The end position of the servos, type in your values here
+const int NLGMaxServoSpeed[NumServo] = {30, 60}; // Maximum speed of the servos in degrees per sec
+const byte NLGStartPos[NumServo] = {0, 90};      // The starting position of the servos, type in your values here
+const byte NLGEndPos[NumServo] = {130, 180};     // The end position of the servos, type in your values here
 
 void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _SwitchStatePrev, SmoothServo &_ServoGear, SmoothServo &_ServoHatch)
 {
@@ -73,35 +73,35 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
     }
 }
 
-void servoSetup()
+void NLGSetup()
 {
-
-    for (int i = 0; i < NUMBEROFSERVOS; i++)
+    for (int i = 0; i < NumServo; i++)
     {
-        float maxStep = MAXSERVOSPEEDDEGS[i] * LOOPTIMESERVOMS / 1000.0;
-        myServo[i].Init(PINSERVO[i], maxStep, SERVOSTARTPOS[i], SERVOENDPOS[i]);
+        float maxStep = NLGMaxServoSpeed[i] * NLGServoTime / 1000.0;
+        myNLGServo[i].Init(ServoPin[i], maxStep, NLGStartPos[i], NLGEndPos[i]);
+        myNLGServo[i].SetTargetStart(); // Ensure servos are in their closed position
     }
 
-    myServoTimer.Start();
+    myNLGTimer.Start();
     Serial.println("End of Setup");
 }
 
-void servoLoop()
+void NLGLoop()
 {
     // Read switch SWC (high/mid/low) for landing gear.
     landingGearSwitchState = myPPMReceiver.GetChannelTriState(LANDINGGEARCHANNEL);
     // Check if landing gear and hatch need to move
-    HandleNoseLandingGearSwitch(landingGearSwitchState, landingGearSwitchStatePrev, myServo[SERVOLANDINGGEAR], myServo[SERVOLANDINGHATCH]);
+    HandleNoseLandingGearSwitch(landingGearSwitchState, landingGearSwitchStatePrev, myNLGServo[SERVOLANDINGGEAR], myNLGServo[SERVOLANDINGHATCH]);
     landingGearSwitchStatePrev = landingGearSwitchState; // update the previous state for the next loop
 
     // Update the smooth servos. There are some debugging print statements in the Update function you want to remove to speed up the code.
-    for (int i = 0; i < NUMBEROFSERVOS; i++)
+    for (int i = 0; i < NumServo; i++)
     {
-        myServo[i].Update();
+        myNLGServo[i].Update();
     }
 
     // At the end of the loop, WaitUntilEnd runs until the time until looptime has passed
-    if (myServoTimer.WaitUntilEnd())
+    if (myNLGTimer.WaitUntilEnd())
     {
         Serial.println("Overrun!");
     }

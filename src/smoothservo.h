@@ -8,18 +8,21 @@
 
 #include <ESP32Servo.h>
 
-
-class SmoothServo {
+class SmoothServo
+{
 public:
-  SmoothServo() {
+  SmoothServo()
+  {
     _Servo = new Servo();
   }
 
-  ~SmoothServo(){
+  ~SmoothServo()
+  {
     delete _Servo;
   }
 
-  void Init(byte pinNumber, float maxStep, byte startPos, byte endPos) {
+  void Init(byte pinNumber, float maxStep, byte startPos, byte endPos)
+  {
     _pinNumber = pinNumber;
     _maxStep = maxStep;
     _targetPos = startPos;
@@ -29,27 +32,36 @@ public:
     _Servo->attach(_pinNumber);
   }
 
-  void SetTargetPos(byte targetPos) {
+  void SetTargetPos(byte targetPos)
+  {
     _targetPos = targetPos;
   }
 
-  void SetTargetStart(){
+  void SetTargetStart()
+  {
     _targetPos = _startPos;
   }
 
-  void SetTargetEnd(){
+  void SetTargetEnd()
+  {
     _targetPos = _endPos;
   }
 
-  void Update() {
+  void Update()
+  {
     float error = float(_targetPos) - _actualPos;
     error = max(-_maxStep, min(_maxStep, error));
     _actualPos += error;
     _Servo->write(int(_actualPos));
   }
 
+  byte GetPosition() const
+  {
+    return static_cast<byte>(_actualPos);
+  }
+
 private:
-  Servo* _Servo;
+  Servo *_Servo;
   byte _pinNumber;
   byte _targetPos;
   float _actualPos;
@@ -61,4 +73,4 @@ private:
 //---------------------------------------------------------------------------------------------------------
 // End of SMOOTHSERVO
 //---------------------------------------------------------------------------------------------------------
-#endif //SMOOTHSERVO_H
+#endif // SMOOTHSERVO_H
