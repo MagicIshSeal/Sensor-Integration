@@ -11,8 +11,6 @@
 #include <Arduino.h>
 #include <FRPPMReceiver.h>
 
-const byte number_chan = 8;
-const byte ppm_pin = 4;
 const int loggerPin = 4; // The pin number for the button to start and stop logging
 
 const float LAT0 = 51.99751239776191; // Latitude of null reference location, in this case the Terminal
@@ -29,13 +27,12 @@ FRBMP280 myAltitudeSensor;
 FRAS5600 myAOASensor;
 FRTinyGPS myGPSSensor;
 FRMS4525DO myPitotSensor;
-FRPPMReceiver myPPMReceiver(ppm_pin, number_chan);
+extern FRPPMReceiver myPPMReceiver;
 
 void setupSensors()
 {
 
     Wire.begin();
-    myPPMReceiver.Init();
     if (!myLogger.CheckSD())
     {
         Serial.println("No SD Card");
