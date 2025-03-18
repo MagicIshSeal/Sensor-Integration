@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#ifndef LOGGER_H
+#define LOGGER_H
 
 #include <FRTimer.h>
 #include <FRLogger.h>
@@ -8,9 +8,12 @@
 #include <FRAS5600.h>
 #include <FRTinyGPS.h>
 #include <FRMS4525DO.h>
+#include <Arduino.h>
 #include <FRPPMReceiver.h>
 
-const int PINSWITCH = 35; // The pin number for the button to start and stop logging
+const byte number_chan = 8;
+const byte ppm_pin = 4;
+const int loggerPin = 4; // The pin number for the button to start and stop logging
 
 const float LAT0 = 51.99751239776191; // Latitude of null reference location, in this case the Terminal
 const float LON0 = 4.369074612612849; // Longitude of null reference location, in this case the Terminal
@@ -19,7 +22,6 @@ const float offsetAngle = 0;
 
 const int LOGGERLOOPTIMEMS = 100; // Loop time for logging
 
-FRPPMReceiver myReceiver;
 Timer myLoggerTimer(LOGGERLOOPTIMEMS);
 Logger myLogger;
 FRMPU9250 myIMUSensor;
@@ -27,10 +29,13 @@ FRBMP280 myAltitudeSensor;
 FRAS5600 myAOASensor;
 FRTinyGPS myGPSSensor;
 FRMS4525DO myPitotSensor;
+FRPPMReceiver myPPMReceiver(ppm_pin, number_chan);
 
 void setupSensors()
 {
-    Wire.begin(21, 22);
+
+    Wire.begin();
+    myPPMReceiver.Init();
     if (!myLogger.CheckSD())
     {
         Serial.println("No SD Card");
@@ -63,54 +68,12 @@ void setupSensors()
     Serial.println("Sensors Initialised");
 }
 
-void setupLogger()
-{
-    setupSensors();
-    calibrateSensor();
-    sensorAdd();
-    myLoggerTimer.Start();
-}
-
 void calibrateSensor()
 {
     myAltitudeSensor.AutoOffset();
     myIMUSensor.AutoOffsetGyro();
     myPitotSensor.AutoOffset();
     myAOASensor.AutoOffset();
-}
-
-void handleButtonPress()
-{
-    int reading = digitalRead(PINSWITCH);
-
-    if (reading != lastButtonState)
-    {
-        lastDebounceTime = millis();
-    }
-
-    if ((millis() - lastDebounceTime) > debounceDelay)
-    {
-        if (reading != buttonState)
-        {
-            buttonState = reading;
-            if (buttonState == HIGH)
-            {
-                loggerRunning = !loggerRunning;
-                if (loggerRunning)
-                {
-                    Serial.println("Logger started");
-                    myLogger.StartLogger();
-                }
-                else
-                {
-                    Serial.println("Logger stopped");
-                    myLogger.StopLogger();
-                }
-            }
-        }
-    }
-
-    lastButtonState = reading;
 }
 
 void sensorAdd()
@@ -120,6 +83,41 @@ void sensorAdd()
     myLogger.AddSensor(&myPitotSensor);
     myLogger.AddSensor(&myGPSSensor);
     myLogger.AddSensor(&myAOASensor);
+    myLogger.AddSensor(&myPPMReceiver);
 }
 
+void loggerSetup()
+{
+    setupSensors();
+    calibrateSensor();
+    sensorAdd();
+    myLoggerTimer.Start();
+}
+
+void loggerLoop()
+{
+    if (myPPMReceiver.IsChannelHigh(loggerPin) == 0 && myLogger.IsLogging() == false)
+    {
+        myLogger.StartLogger();
+        Serial.print("Logging Started in: ");
+        Serial.println(myLogger.GetLoggerFileName());
+        myLogger.UpdateSensors();
+        myLogger.WriteLogger();
+    }
+    else if (myPPMReceiver.IsChannelHigh(loggerPin) == 1 && myLogger.IsLogging() == true)
+    {
+        myLogger.StopLogger();
+        Serial.print("Logging Stopped, data saved in: ");
+        Serial.println(myLogger.GetLoggerFileName());
+    }
+    else
+    {
+        myLogger.UpdateSensors();
+        myLogger.WriteLogger();
+        if (myLoggerTimer.WaitUntilEnd())
+        {
+            Serial.println("Overrun!"); // if there are delays in the loop, you will get overruns i.e. the loop took longer than the looptime
+        }
+    }
+}
 #endif
