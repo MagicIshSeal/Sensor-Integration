@@ -11,8 +11,7 @@
 #include <Arduino.h>
 #include <FRPPMReceiver.h>
 
-const byte number_chan = 8;
-const byte ppm_pin = 4;
+const int buttonPin = 35;
 const int loggerPin = 4; // The pin number for the button to start and stop logging
 
 const float LAT0 = 51.99751239776191; // Latitude of null reference location, in this case the Terminal
@@ -22,6 +21,8 @@ const float offsetAngle = 0;
 
 const int LOGGERLOOPTIMEMS = 100; // Loop time for logging
 
+bool ButtonPressed = false;
+
 Timer myLoggerTimer(LOGGERLOOPTIMEMS);
 Logger myLogger;
 FRMPU9250 myIMUSensor;
@@ -29,13 +30,12 @@ FRBMP280 myAltitudeSensor;
 FRAS5600 myAOASensor;
 FRTinyGPS myGPSSensor;
 FRMS4525DO myPitotSensor;
-FRPPMReceiver myPPMReceiver(ppm_pin, number_chan);
+extern FRPPMReceiver myPPMReceiver;
 
 void setupSensors()
 {
 
     Wire.begin();
-    myPPMReceiver.Init();
     if (!myLogger.CheckSD())
     {
         Serial.println("No SD Card");
@@ -70,6 +70,18 @@ void setupSensors()
 
 void calibrateSensor()
 {
+    while (ButtonPressed == false)
+    {
+        Serial.println("Press the button to calibrate the sensors");
+        Serial.println(digitalRead(buttonPin));
+        if (digitalRead(buttonPin) == 0)
+        {
+            ButtonPressed = true;
+            Serial.println("Calibrating sensors");
+        }
+        delay(100);
+    }
+
     myAltitudeSensor.AutoOffset();
     myIMUSensor.AutoOffsetGyro();
     myPitotSensor.AutoOffset();
@@ -88,9 +100,10 @@ void sensorAdd()
 
 void loggerSetup()
 {
+    pinMode(buttonPin, INPUT);
     setupSensors();
-    calibrateSensor();
     sensorAdd();
+    calibrateSensor();
     myLoggerTimer.Start();
 }
 
