@@ -46,8 +46,6 @@ public:
     error = max(-_maxStep, min(_maxStep, error));
     _actualPos += error;
     _Servo->write(int(_actualPos));
-    Serial.print(int(_actualPos));
-    Serial.print("; ");
   }
 
 private:
