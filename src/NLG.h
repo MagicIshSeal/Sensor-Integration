@@ -5,6 +5,7 @@
 #include <FRPPMReceiver.h>
 #include <ESP32Servo.h>
 #include "smoothservo.h"
+#include "state.h"
 
 const byte NumServo = 2; // Number of Servos to control. Change if you wannt more servos
 
@@ -18,6 +19,7 @@ const int NLGServoTime = 100; // Loop time for controlling servos. Make it 10 ms
 Timer myNLGTimer(NLGServoTime); // Timer object for the clock
 SmoothServo myNLGServo[NumServo];
 extern FRPPMReceiver myPPMReceiver;
+extern SSD1306AsciiWire myOLED;
 
 const byte LANDINGGEARCHANNEL = 5;
 
@@ -27,12 +29,12 @@ triStateSwitch landingGearSwitchState;
 triStateSwitch landingGearSwitchStatePrev;
 
 // Servo parameters: number, max speed, max values;
-const byte SERVOLANDINGGEAR = 0; // the servo number of the landing gear
-const byte SERVOLANDINGHATCH = 1;
+const byte SERVOLANDINGGEAR = 1; // the servo number of the landing gear
+const byte SERVOLANDINGHATCH = 0;
 
 const int NLGMaxServoSpeed[NumServo] = {30, 60}; // Maximum speed of the servos in degrees per sec
-const byte NLGStartPos[NumServo] = {0, 90};      // The starting position of the servos, type in your values here
-const byte NLGEndPos[NumServo] = {130, 180};     // The end position of the servos, type in your values here
+const byte NLGStartPos[NumServo] = {0, 0};       // The starting position of the servos, type in your values here
+const byte NLGEndPos[NumServo] = {130, 90};      // The end position of the servos, type in your values here
 
 void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _SwitchStatePrev, SmoothServo &_ServoGear, SmoothServo &_ServoHatch)
 {
@@ -46,13 +48,15 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
         {
             // So it was HISTATE, now pull in the gear
             _ServoGear.SetTargetEnd();
-            Serial.println("Retract gear");
+            // Serial.println("Retract gear");
+            Message("Retract gear", myLED, YELLOW, Serial, myOLED);
         }
         else
         {
             // So it was in MIDSTATE, now close the hatch
             _ServoHatch.SetTargetEnd();
-            Serial.println("Close hatch");
+            // Serial.println("Close hatch");
+            Message("Close hatch", myLED, YELLOW, Serial, myOLED);
         }
     }
     if (_SwitchState > _SwitchStatePrev)
@@ -62,13 +66,15 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
         {
             // So it was LOSTATE, now open the hatch
             _ServoHatch.SetTargetStart();
-            Serial.println("Open hatch");
+            // Serial.println("Open hatch");
+            Message("Open hatch", myLED, YELLOW, Serial, myOLED);
         }
         else
         {
             // So it was in MIDSTATE, now extend the gear
             _ServoGear.SetTargetStart();
-            Serial.println("Extend gear");
+            // Serial.println("Extend gear");
+            Message("Extend gear", myLED, YELLOW, Serial, myOLED);
         }
     }
 }
@@ -83,7 +89,7 @@ void NLGSetup()
     }
 
     myNLGTimer.Start();
-    Serial.println("End of Setup");
+    // Serial.println("End of Setup");
 }
 
 void NLGLoop()
