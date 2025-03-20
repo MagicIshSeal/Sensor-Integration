@@ -10,6 +10,7 @@
 #include <FRMS4525DO.h>
 #include <Arduino.h>
 #include <FRPPMReceiver.h>
+#include "state.h"
 
 const int buttonPin = 35;
 const int loggerPin = 4; // The pin number for the button to start and stop logging
@@ -34,68 +35,149 @@ extern FRPPMReceiver myPPMReceiver;
 extern RGBLED myLED;
 extern SSD1306AsciiWire myOLED;
 
+void bypassError(String errorString)
+{
+    unsigned long buttonPressStart = 0;
+    bool buttonHeld = false;
+    bool progressDisplayed = false; // Flag to track if the progress bar is already displayed
+
+    while (true)
+    {
+        // Display the error message and "Hold to Bypass" only once
+        if (!progressDisplayed)
+        {
+            Message(errorString, myLED, RED, Serial, myOLED);
+            myOLED.setRow(2); // Display "Hold to Bypass" on the second row
+            myOLED.print("Hold to Bypass");
+            progressDisplayed = true; // Set the flag to true
+        }
+
+        // Progress bar variables
+        const int progressBarWidth = 20;     // Number of segments in the progress bar
+        const unsigned long holdTime = 2000; // Time required to bypass in milliseconds
+
+        if (digitalRead(buttonPin) == LOW) // Button pressed
+        {
+            if (buttonPressStart == 0)
+            {
+                buttonPressStart = millis(); // Start timing
+            }
+            else
+            {
+                unsigned long elapsedTime = millis() - buttonPressStart;
+
+                // Calculate progress as a fraction of the hold time
+                float progress = (float)elapsedTime / holdTime;
+                if (progress > 1.0)
+                    progress = 1.0; // Cap progress at 100%
+
+                // Draw the progress bar
+                myOLED.setCursor(0, 3); // Set to the first column of the last row
+                myOLED.clearToEOL();    // Clear the row before drawing
+                int filledSegments = progress * progressBarWidth;
+                for (int i = 0; i < filledSegments; i++)
+                {
+                    myOLED.print("="); // Draw filled segments
+                }
+
+                // Check if the button has been held long enough
+                if (elapsedTime >= holdTime)
+                {
+                    buttonHeld = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            buttonPressStart = 0;   // Reset timing if button is released
+            myOLED.setCursor(0, 3); // Reset to the first column of the last row
+            myOLED.clearToEOL();    // Clear the progress bar if the button is released
+        }
+
+        delay(100); // Small delay to avoid rapid updates
+    }
+
+    if (buttonHeld)
+    {
+        myOLED.clear();
+        myOLED.println("Bypass!");
+        delay(1000); // Show "Bypass!" message for 1 second
+    }
+}
+
 void setupSensors()
 {
-
     if (!myLogger.CheckSD())
     {
-        // Serial.println("No SD Card");
-        Message("SD Card not found", myLED, RED, Serial, myOLED);
+        bypassError("SD card not found");
     }
 
     if (!myIMUSensor.Init(Wire))
     {
-        // Serial.println("Failed to initialize IMU sensor");
-        Message("IMU sensor not found", myLED, RED, Serial, myOLED);
+        bypassError("IMU not found");
     }
 
     if (!myAltitudeSensor.Init(Wire))
     {
-        // Serial.println("Failed to initialize Altitude sensor");
-        Message("Altitude sensor not found", myLED, RED, Serial, myOLED);
+        bypassError("Barometer not found");
     }
 
     if (!myAOASensor.Init())
     {
-        // Serial.println("Failed to initialize AOA sensor");
-        Message("AOA sensor not found", myLED, RED, Serial, myOLED);
+        bypassError("AOA sensor found");
     }
 
     if (!myGPSSensor.Init())
     {
-        // Serial.println("Failed to initialize GPS sensor");
-        Message("GPS sensor not found", myLED, RED, Serial, myOLED);
+        bypassError("GPS not found");
     }
 
     if (!myPitotSensor.Init(Wire))
     {
-        // Serial.println("Failed to initialize Pitot sensor");
-        Message("Pitot sensor not found", myLED, RED, Serial, myOLED);
+        bypassError("Pitot not found");
     }
-    // Serial.println("Sensors Initialised");
     Message("Sensors Initialised", myLED, GREEN, Serial, myOLED);
+    delay(1000);
 }
 
 void calibrateSensor()
 {
+    bool messageDisplayed = false; // Flag to track if the message is already displayed
+
     while (ButtonPressed == false)
     {
-        // Serial.println("Press the button to calibrate the sensors");
-        Message("Press the button to calibrate the sensors", myLED, YELLOW, Serial, myOLED);
-        Serial.println(digitalRead(buttonPin));
+        if (!messageDisplayed)
+        {
+            // Display the calibration message only once
+            myOLED.clear();
+            myOLED.setRow(0);
+            Message("Press the button to", myLED, YELLOW, Serial, myOLED);
+            myOLED.setRow(1);
+            myOLED.println("calibrate the sensors");
+            messageDisplayed = true; // Set the flag to true
+        }
+
+        // Check if the button is pressed
         if (digitalRead(buttonPin) == 0)
         {
             ButtonPressed = true;
-            // Serial.println("Calibrating sensors");
+            myOLED.clear();
             Message("Calibrating sensors", myLED, YELLOW, Serial, myOLED);
+            delay(1000); // Show "Calibrating sensors" message for 1 second
         }
-        delay(100);
+
+        delay(100); // Small delay to reduce CPU usage
     }
 
+    // Perform sensor calibration
     myAltitudeSensor.AutoOffset();
     myIMUSensor.AutoOffsetGyro();
     myPitotSensor.AutoOffset();
     myAOASensor.AutoOffset();
+
+    // Display calibration completion message
+    myOLED.clear();
     Message("Sensors Calibrated", myLED, GREEN, Serial, myOLED);
     delay(1000);
 }
@@ -110,18 +192,88 @@ void sensorAdd()
     myLogger.AddSensor(&myPPMReceiver);
 }
 
-void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED)
+void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED &_LED)
 {
+    myOLED.clear();
+    unsigned long buttonPressStart = 0;
+    bool buttonHeld = false;
+    bool progressDisplayed = false;
+
     while (!_GPSSensor.HasValidData())
     {
-        _OLED.setRow(2);
+        // Display GPS status and "Hold to Bypass" message
+        if (!progressDisplayed)
+        {
+            _OLED.setRow(0);
+            _OLED.print("Hold to Bypass");
+            progressDisplayed = true;
+        }
+        _OLED.setCursor(0, 1);
         _OLED.print("# Sats found: ");
         _OLED.print(_GPSSensor.GetSatellites());
-        _OLED.println("   "); // some extra blank characters to overwrite old characters on that line
+        _OLED.println("   "); // Extra blank characters to overwrite old data
+        _OLED.setRow(3);
+        _LED.SetColor(RED);
         _OLED.println("No GPS fix");
-        delay(500); // Wait before checking again
+
+        // Progress bar variables
+        const int progressBarWidth = 20;     // Number of segments in the progress bar
+        const unsigned long holdTime = 2000; // Time required to bypass in milliseconds
+
+        if (digitalRead(buttonPin) == LOW) // Button pressed
+        {
+            if (buttonPressStart == 0)
+            {
+                buttonPressStart = millis(); // Start timing
+            }
+            else
+            {
+                unsigned long elapsedTime = millis() - buttonPressStart;
+
+                // Calculate progress as a fraction of the hold time
+                float progress = (float)elapsedTime / holdTime;
+                if (progress > 1.0)
+                    progress = 1.0; // Cap progress at 100%
+
+                // Draw the progress bar
+                _OLED.setCursor(0, 2); // Set to the first column of the second-to-last row
+                _OLED.clearToEOL();    // Clear the row before drawing
+                int filledSegments = progress * progressBarWidth;
+                for (int i = 0; i < filledSegments; i++)
+                {
+                    _OLED.print("="); // Draw filled segments
+                }
+
+                // Check if the button has been held long enough
+                if (elapsedTime >= holdTime)
+                {
+                    buttonHeld = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            buttonPressStart = 0; // Reset timing if button is released
+            _OLED.setCursor(0, 2);
+            _OLED.clearToEOL(); // Clear the progress bar if the button is released
+        }
+
+        delay(100); // Wait before checking again
     }
-    _OLED.println("GPS fix    ");
+
+    if (buttonHeld)
+    {
+        _OLED.clear();
+        _OLED.println("Bypass!");
+        delay(1000); // Show "Bypass!" message for 1 second
+    }
+    else
+    {
+        _OLED.clear();
+        Message("GPS Fix Acquired", _LED, GREEN, Serial, _OLED);
+        delay(2000);
+    }
 }
 
 void loggerSetup()
@@ -130,7 +282,7 @@ void loggerSetup()
     setupSensors();
     sensorAdd();
     calibrateSensor();
-    PrintGPSStatusToOLED(myGPSSensor, myOLED);
+    PrintGPSStatusToOLED(myGPSSensor, myOLED, myLED);
     myLoggerTimer.Start();
 }
 
@@ -139,16 +291,27 @@ void loggerLoop()
     if (myPPMReceiver.IsChannelHigh(loggerPin) == 0 && myLogger.IsLogging() == false)
     {
         myLogger.StartLogger();
-        String logMessage = "Logging Started in: " + String(myLogger.GetLoggerFileName());
-        Message(logMessage, myLED, GREEN, Serial, myOLED);
+        String logMessage1 = "Logging Started in: ";
+        String logMessage2 = myLogger.GetLoggerFileName();
+        myOLED.setRow(0);
+        Message(logMessage1, myLED, GREEN, Serial, myOLED);
+        myOLED.setRow(1);
+        myOLED.println(logMessage2);
         myLogger.UpdateSensors();
         myLogger.WriteLogger();
     }
     else if (myPPMReceiver.IsChannelHigh(loggerPin) == 1 && myLogger.IsLogging() == true)
     {
         myLogger.StopLogger();
-        String logMessage = "Logging Stopped, data saved in: " + myLogger.GetLoggerFileName();
-        Message(logMessage, myLED, GREEN, Serial, myOLED);
+        String logMessage1 = "Logging Stopped, ";
+        String logMessage2 = "data saved in: ";
+        String logMessage3 = myLogger.GetLoggerFileName();
+        myOLED.setRow(0);
+        Message(logMessage1, myLED, GREEN, Serial, myOLED);
+        myOLED.setRow(1);
+        myOLED.println(logMessage2);
+        myOLED.setRow(2);
+        myOLED.println(logMessage3);
     }
     else
     {
@@ -160,6 +323,5 @@ void loggerLoop()
         }
     }
 }
-
 
 #endif

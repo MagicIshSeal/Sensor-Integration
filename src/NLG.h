@@ -49,6 +49,7 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
             // So it was HISTATE, now pull in the gear
             _ServoGear.SetTargetEnd();
             // Serial.println("Retract gear");
+            
             Message("Retract gear", myLED, YELLOW, Serial, myOLED);
         }
         else
