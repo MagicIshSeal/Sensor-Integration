@@ -32,16 +32,18 @@ triStateSwitch landingGearSwitchStatePrev;
 const byte SERVOLANDINGGEAR = 1; // the servo number of the landing gear
 const byte SERVOLANDINGHATCH = 0;
 
-const int NLGMaxServoSpeed[NumServo] = {30, 60}; // Maximum speed of the servos in degrees per sec
+const int NLGMaxServoSpeed[NumServo] = {60, 30}; // Maximum speed of the servos in degrees per sec
 const byte NLGStartPos[NumServo] = {0, 0};       // The starting position of the servos, type in your values here
-const byte NLGEndPos[NumServo] = {130, 90};      // The end position of the servos, type in your values here
+const byte NLGEndPos[NumServo] = {90, 90};       // The end position of the servos, type in your values here, for the landing gear, dot he value x 1.5
+const int minTime[NumServo] = {500, 900};        // The minimum time for the servos
+const int maxTime[NumServo] = {2400, 2100};      // The maximum time for the servos
 
 void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _SwitchStatePrev, SmoothServo &_ServoGear, SmoothServo &_ServoHatch)
 {
     // landingGearSwitchState can have the state LOSTATE (-1), MIDSTATE (0), or HISTATE (1)
     // the function GetChannelTriState returns one of these three states depending on the value of the channel
 
-    if (_SwitchState < _SwitchStatePrev)
+    if (_SwitchState > _SwitchStatePrev)
     {
         // towards rectracted state
         if (_SwitchState == MIDSTATE)
@@ -49,24 +51,24 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
             // So it was HISTATE, now pull in the gear
             _ServoGear.SetTargetEnd();
             // Serial.println("Retract gear");
-            
+
             Message("Retract gear", myLED, YELLOW, Serial, myOLED);
         }
         else
         {
             // So it was in MIDSTATE, now close the hatch
-            _ServoHatch.SetTargetEnd();
+            _ServoHatch.SetTargetStart();
             // Serial.println("Close hatch");
             Message("Close hatch", myLED, YELLOW, Serial, myOLED);
         }
     }
-    if (_SwitchState > _SwitchStatePrev)
+    if (_SwitchState < _SwitchStatePrev)
     {
         // towards extended state
         if (_SwitchState == MIDSTATE)
         {
             // So it was LOSTATE, now open the hatch
-            _ServoHatch.SetTargetStart();
+            _ServoHatch.SetTargetEnd();
             // Serial.println("Open hatch");
             Message("Open hatch", myLED, YELLOW, Serial, myOLED);
         }
@@ -85,8 +87,8 @@ void NLGSetup()
     for (int i = 0; i < NumServo; i++)
     {
         float maxStep = NLGMaxServoSpeed[i] * NLGServoTime / 1000.0;
-        myNLGServo[i].Init(ServoPin[i], maxStep, NLGStartPos[i], NLGEndPos[i]);
-        myNLGServo[i].SetTargetStart(); // Ensure servos are in their closed position
+        myNLGServo[i].Init(ServoPin[i], maxStep, NLGStartPos[i], NLGEndPos[i], minTime[i], maxTime[i]);
+        myNLGServo[i].SetTargetEnd(); // Ensure servos are in their closed position
     }
 
     myNLGTimer.Start();

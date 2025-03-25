@@ -21,7 +21,7 @@ public:
     delete _Servo;
   }
 
-  void Init(byte pinNumber, float maxStep, byte startPos, byte endPos)
+  void Init(byte pinNumber, float maxStep, byte startPos, byte endPos, int minTime, int maxTime)
   {
     _pinNumber = pinNumber;
     _maxStep = maxStep;
@@ -29,7 +29,9 @@ public:
     _actualPos = startPos;
     _startPos = startPos;
     _endPos = endPos;
-    _Servo->attach(_pinNumber);
+    _minTime = minTime;
+    _maxTime = maxTime;
+    _Servo->attach(_pinNumber, _minTime, _maxTime);
   }
 
   void SetTargetPos(byte targetPos)
@@ -68,6 +70,8 @@ private:
   float _maxStep;
   byte _startPos;
   byte _endPos;
+  int _minTime;
+  int _maxTime;
 };
 
 //---------------------------------------------------------------------------------------------------------

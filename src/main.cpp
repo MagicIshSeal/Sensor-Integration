@@ -2,9 +2,9 @@
 #include <FRPPMReceiver.h>
 #include "logger.h"
 #include "NLG.h"
-//#include "cargo_code.h"
+// #include "cargo_code.h"
 #include "state.h"
-
+#include "test.h"
 const byte number_chan = 10;
 const byte ppm_pin = 4;
 
@@ -18,13 +18,13 @@ void setup()
   OLEDSetup();
   loggerSetup();
   NLGSetup();
-  //servoSetup();
+  // servoSetup();
 }
 
 void loop()
 {
   loggerLoop();
   NLGLoop();
-  //servoLoop();
-  //  put your main code here, to run repeatedly:
+  // servoLoop();
+  //   put your main code here, to run repeatedly:
 }
