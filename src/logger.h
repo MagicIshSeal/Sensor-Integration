@@ -12,29 +12,37 @@
 #include <FRPPMReceiver.h>
 #include "state.h"
 
-const int buttonPin = 35;
-const int loggerPin = 4; // The pin number for the button to start and stop logging
+// Pin definitions
+const int buttonPin = 35; // Pin for button to start/stop logging
+const int loggerPin = 4;  // PPM channel for logging control
 
-const float LAT0 = 51.99751239776191; // Latitude of null reference location, in this case the Terminal
-const float LON0 = 4.369074612612849; // Longitude of null reference location, in this case the Terminal
+// GPS reference location
+const float LAT0 = 51.99751239776191; // Latitude of reference point
+const float LON0 = 4.369074612612849; // Longitude of reference point
 
-const float offsetAngle = 0;
+// Logger loop timing
+const int LOGGERLOOPTIMEMS = 100; // Loop time in milliseconds
 
-const int LOGGERLOOPTIMEMS = 100; // Loop time for logging
+// Global variables
+bool ButtonPressed = false; // Tracks button press state
 
-bool ButtonPressed = false;
-
+// Timer for logger loop
 Timer myLoggerTimer(LOGGERLOOPTIMEMS);
+
+// Logger and sensor objects
 Logger myLogger;
 FRMPU9250 myIMUSensor;
 FRBMP280 myAltitudeSensor;
 FRAS5600 myAOASensor;
 FRTinyGPS myGPSSensor;
 FRMS4525DO myPitotSensor;
+
+// External objects
 extern FRPPMReceiver myPPMReceiver;
 extern RGBLED myLED;
 extern SSD1306AsciiWire myOLED;
 
+// Function to handle errors and allow bypass
 void bypassError(String errorString)
 {
     unsigned long buttonPressStart = 0;
@@ -106,6 +114,7 @@ void bypassError(String errorString)
     }
 }
 
+// Function to initialize sensors
 void setupSensors()
 {
     if (!myLogger.CheckSD())
@@ -141,6 +150,7 @@ void setupSensors()
     delay(1000);
 }
 
+// Function to calibrate sensors
 void calibrateSensor()
 {
     bool messageDisplayed = false; // Flag to track if the message is already displayed
@@ -182,6 +192,7 @@ void calibrateSensor()
     delay(1000);
 }
 
+// Function to add sensors to the logger
 void sensorAdd()
 {
     myLogger.AddSensor(&myAltitudeSensor);
@@ -192,6 +203,7 @@ void sensorAdd()
     myLogger.AddSensor(&myPPMReceiver);
 }
 
+// Function to display GPS status on OLED
 void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED &_LED)
 {
     myOLED.clear();
@@ -276,6 +288,7 @@ void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED
     }
 }
 
+// Function to setup logger
 void loggerSetup()
 {
     pinMode(buttonPin, INPUT);
@@ -286,6 +299,7 @@ void loggerSetup()
     myLoggerTimer.Start();
 }
 
+// Function to handle logger loop
 void loggerLoop()
 {
     if (myPPMReceiver.IsChannelHigh(loggerPin) == 0 && myLogger.IsLogging() == false)
