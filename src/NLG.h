@@ -7,37 +7,38 @@
 #include "smoothservo.h"
 #include "state.h"
 
-const byte NumServo = 2; // Number of Servos to control. Change if you wannt more servos
-
-// Pins
+// Constants for servos
+const byte NumServo = 2;                  // Number of servos
 const byte ServoPin[NumServo] = {26, 27}; // Servo pin numbers
+const int NLGServoTime = 100;             // Loop time for servo control
 
-// other constants
-const int NLGServoTime = 100; // Loop time for controlling servos. Make it 10 ms for smoother control, but then remove the Serial.print statements to prevent overruns
+// Timer for nose landing gear
+Timer myNLGTimer(NLGServoTime);
 
-// Create all objects
-Timer myNLGTimer(NLGServoTime); // Timer object for the clock
+// Smooth servo objects
 SmoothServo myNLGServo[NumServo];
+
+// External objects
 extern FRPPMReceiver myPPMReceiver;
 extern SSD1306AsciiWire myOLED;
 
+// PPM channel for landing gear
 const byte LANDINGGEARCHANNEL = 5;
 
-// States for starting and stopping the logger
-// States for landing gear
+// Landing gear switch states
 triStateSwitch landingGearSwitchState;
 triStateSwitch landingGearSwitchStatePrev;
 
-// Servo parameters: number, max speed, max values;
-const byte SERVOLANDINGGEAR = 1; // the servo number of the landing gear
+// Servo parameters
+const byte SERVOLANDINGGEAR = 1;
 const byte SERVOLANDINGHATCH = 0;
+const int NLGMaxServoSpeed[NumServo] = {60, 60};
+const byte NLGStartPos[NumServo] = {88, 30};
+const byte NLGEndPos[NumServo] = {180, 180};
+const int minTime[NumServo] = {500, 900};
+const int maxTime[NumServo] = {2400, 2100};
 
-const int NLGMaxServoSpeed[NumServo] = {60, 30}; // Maximum speed of the servos in degrees per sec
-const byte NLGStartPos[NumServo] = {0, 0};       // The starting position of the servos, type in your values here
-const byte NLGEndPos[NumServo] = {90, 90};       // The end position of the servos, type in your values here, for the landing gear, dot he value x 1.5
-const int minTime[NumServo] = {500, 900};        // The minimum time for the servos
-const int maxTime[NumServo] = {2400, 2100};      // The maximum time for the servos
-
+// Function to handle landing gear switch
 void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _SwitchStatePrev, SmoothServo &_ServoGear, SmoothServo &_ServoHatch)
 {
     // landingGearSwitchState can have the state LOSTATE (-1), MIDSTATE (0), or HISTATE (1)
@@ -49,7 +50,7 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
         if (_SwitchState == MIDSTATE)
         {
             // So it was HISTATE, now pull in the gear
-            _ServoGear.SetTargetEnd();
+            _ServoGear.SetTargetStart();
             // Serial.println("Retract gear");
 
             Message("Retract gear", myLED, YELLOW, Serial, myOLED);
@@ -75,13 +76,14 @@ void HandleNoseLandingGearSwitch(triStateSwitch _SwitchState, triStateSwitch _Sw
         else
         {
             // So it was in MIDSTATE, now extend the gear
-            _ServoGear.SetTargetStart();
+            _ServoGear.SetTargetEnd();
             // Serial.println("Extend gear");
             Message("Extend gear", myLED, YELLOW, Serial, myOLED);
         }
     }
 }
 
+// Function to setup nose landing gear
 void NLGSetup()
 {
     for (int i = 0; i < NumServo; i++)
@@ -95,6 +97,7 @@ void NLGSetup()
     // Serial.println("End of Setup");
 }
 
+// Function to handle nose landing gear loop
 void NLGLoop()
 {
     // Read switch SWC (high/mid/low) for landing gear.

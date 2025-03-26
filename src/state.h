@@ -6,13 +6,17 @@
 #include <SSD1306Ascii.h>
 #include <SSD1306AsciiWire.h>
 
+// Pin for switch
 const byte PINSWITCH = 35;
 
+// OLED display address
 const int OLED_ADDRESS = 0x3C;
 
+// Global objects for LED and OLED
 RGBLED myLED;
 SSD1306AsciiWire myOLED;
 
+// Function to display a message on OLED and LED
 void Message(const String &_Message, RGBLED &_LED, rgbcolors _Color, HardwareSerial &_Serial, SSD1306AsciiWire &_OLED)
 {
     _OLED.clear();
@@ -21,6 +25,7 @@ void Message(const String &_Message, RGBLED &_LED, rgbcolors _Color, HardwareSer
     _OLED.println(_Message);
 }
 
+// Function to setup OLED display
 void OLEDSetup()
 {
     myOLED.begin(&Adafruit128x32, OLED_ADDRESS); // Initialize the OLED
