@@ -27,13 +27,12 @@ void setup()
   // Setup OLED display
   OLEDSetup();
 
+  // Setup nose landing gear
+  NLGSetup();
   // Setup logger
   loggerSetup();
 
-  // Setup nose landing gear
-  NLGSetup();
-
-  // Uncomment to setup servos for cargo bay / test code
+    // Uncomment to setup servos for cargo bay / test code
   // servoSetup();
 }
 
