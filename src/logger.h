@@ -10,6 +10,7 @@
 #include <FRMS4525DO.h>
 #include <Arduino.h>
 #include <FRPPMReceiver.h>
+#include <FRPPMReceiverSensor.h>
 #include "state.h"
 
 // Pin definitions
