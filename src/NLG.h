@@ -33,8 +33,8 @@ triStateSwitch landingGearSwitchStatePrev;
 const byte SERVOLANDINGGEAR = 1;
 const byte SERVOLANDINGHATCH = 0;
 const int NLGMaxServoSpeed[NumServo] = {60, 60};
-const byte NLGStartPos[NumServo] = {88, 30};
-const byte NLGEndPos[NumServo] = {180, 180};
+const byte NLGStartPos[NumServo] = {180, 20};
+const byte NLGEndPos[NumServo] = {0, 180};
 const int minTime[NumServo] = {500, 900};
 const int maxTime[NumServo] = {2400, 2100};
 

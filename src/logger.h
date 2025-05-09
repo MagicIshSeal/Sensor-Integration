@@ -10,6 +10,7 @@
 #include <FRMS4525DO.h>
 #include <Arduino.h>
 #include <FRPPMReceiver.h>
+#include <FRPPMReceiverSensor.h>
 #include "state.h"
 
 // Pin definitions
@@ -17,8 +18,8 @@ const int buttonPin = 35; // Pin for button to start/stop logging
 const int loggerPin = 4;  // PPM channel for logging control
 
 // GPS reference location
-const float LAT0 = 51.99751239776191; // Latitude of reference point
-const float LON0 = 4.369074612612849; // Longitude of reference point
+const float LAT0 = 51.92788946956197; // Latitude of reference point
+const float LON0 = 4.214285252110042; // Longitude of reference point
 
 // Logger loop timing
 const int LOGGERLOOPTIMEMS = 100; // Loop time in milliseconds
@@ -204,29 +205,31 @@ void sensorAdd()
 }
 
 // Function to display GPS status on OLED
-void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED &_LED)
+void PrintGPSStatusToOLED()
 {
     myOLED.clear();
     unsigned long buttonPressStart = 0;
     bool buttonHeld = false;
     bool progressDisplayed = false;
 
-    while (!_GPSSensor.HasValidData())
+    while (!myGPSSensor.HasValidData())
     {
+        myLogger.UpdateSensors();
         // Display GPS status and "Hold to Bypass" message
         if (!progressDisplayed)
         {
-            _OLED.setRow(0);
-            _OLED.print("Hold to Bypass");
+            myOLED.setRow(0);
+            myOLED.print("Hold to Bypass");
             progressDisplayed = true;
         }
-        _OLED.setCursor(0, 1);
-        _OLED.print("# Sats found: ");
-        _OLED.print(_GPSSensor.GetSatellites());
-        _OLED.println("   "); // Extra blank characters to overwrite old data
-        _OLED.setRow(3);
-        _LED.SetColor(RED);
-        _OLED.println("No GPS fix");
+        myOLED.setCursor(0, 1);
+        myOLED.print("# Sats found: ");
+        myOLED.print(myGPSSensor.GetSatellites());
+
+        myOLED.println("   "); // Extra blank characters to overwrite old data
+        myOLED.setRow(3);
+        myLED.SetColor(RED);
+        myOLED.println("No GPS fix");
 
         // Progress bar variables
         const int progressBarWidth = 20;     // Number of segments in the progress bar
@@ -248,12 +251,12 @@ void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED
                     progress = 1.0; // Cap progress at 100%
 
                 // Draw the progress bar
-                _OLED.setCursor(0, 2); // Set to the first column of the second-to-last row
-                _OLED.clearToEOL();    // Clear the row before drawing
+                myOLED.setCursor(0, 2); // Set to the first column of the second-to-last row
+                myOLED.clearToEOL();    // Clear the row before drawing
                 int filledSegments = progress * progressBarWidth;
                 for (int i = 0; i < filledSegments; i++)
                 {
-                    _OLED.print("="); // Draw filled segments
+                    myOLED.print("="); // Draw filled segments
                 }
 
                 // Check if the button has been held long enough
@@ -267,23 +270,23 @@ void PrintGPSStatusToOLED(FRTinyGPS &_GPSSensor, SSD1306AsciiWire &_OLED, RGBLED
         else
         {
             buttonPressStart = 0; // Reset timing if button is released
-            _OLED.setCursor(0, 2);
-            _OLED.clearToEOL(); // Clear the progress bar if the button is released
+            myOLED.setCursor(0, 2);
+            myOLED.clearToEOL(); // Clear the progress bar if the button is released
         }
 
-        delay(100); // Wait before checking again
+        delay(1000); // Wait before checking again
     }
 
     if (buttonHeld)
     {
-        _OLED.clear();
-        _OLED.println("Bypass!");
+        myOLED.clear();
+        myOLED.println("Bypass!");
         delay(1000); // Show "Bypass!" message for 1 second
     }
     else
     {
-        _OLED.clear();
-        Message("GPS Fix Acquired", _LED, GREEN, Serial, _OLED);
+        myOLED.clear();
+        Message("GPS Fix Acquired", myLED, GREEN, Serial, myOLED);
         delay(2000);
     }
 }
@@ -295,8 +298,8 @@ void loggerSetup()
     setupSensors();
     sensorAdd();
     calibrateSensor();
-    PrintGPSStatusToOLED(myGPSSensor, myOLED, myLED);
     myLoggerTimer.Start();
+    PrintGPSStatusToOLED();
 }
 
 // Function to handle logger loop

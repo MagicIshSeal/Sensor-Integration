@@ -19,22 +19,21 @@ void setup()
   Serial.begin(9600);
 
   // Initialize I2C communication
-  Wire.begin();
+   Wire.begin();
 
   // Initialize PPM receiver
-  myPPMReceiver.Init();
+   myPPMReceiver.Init();
 
   // Setup OLED display
-  OLEDSetup();
-
-  // Setup logger
-  loggerSetup();
+   OLEDSetup();
 
   // Setup nose landing gear
-  NLGSetup();
+   NLGSetup();
+  // Setup logger
+   loggerSetup();
 
   // Uncomment to setup servos for cargo bay / test code
-  // servoSetup();
+  //servoSetup();
 }
 
 void loop()
@@ -46,7 +45,7 @@ void loop()
   NLGLoop();
 
   // Uncomment to run servo loop for cargo bay / test code
-  // servoLoop();
+  //servoLoop();
 
   // Add your main code here to run repeatedly
 }
