@@ -186,6 +186,7 @@ void calibrateSensor()
     myIMUSensor.AutoOffsetGyro();
     myPitotSensor.AutoOffset();
     myAOASensor.AutoOffset();
+    myIMUSensor.SetOffsetAcc(0,0,9.81);
 
     // Display calibration completion message
     myOLED.clear();
